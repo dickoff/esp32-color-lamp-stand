@@ -9,7 +9,7 @@
 		(in_pos_files yes)
 		(duplicate_pin_numbers_are_jumpers no)
 		(property "Reference" "U"
-			(at 2.794 7.62 0)
+			(at 2.794 10.414 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -19,7 +19,7 @@
 			)
 		)
 		(property "Value" "TPS22975DSGR"
-			(at 0 0 0)
+			(at 3.302 14.224 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -29,7 +29,7 @@
 			)
 		)
 		(property "Footprint" "Package_SON:Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm"
-			(at 0 0 0)
+			(at -5.08 -14.986 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(hide yes)
@@ -40,7 +40,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps22975.pdf"
-			(at 0 0 0)
+			(at -5.842 -17.78 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(hide yes)
@@ -62,7 +62,7 @@
 			)
 		)
 		(property "LCSC" "C524777"
-			(at 0 0 0)
+			(at 18.542 -4.318 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(hide yes)
@@ -73,7 +73,7 @@
 			)
 		)
 		(property "Manufacturer" "Texas Instruments"
-			(at 0 0 0)
+			(at -14.224 -7.874 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(hide yes)
@@ -84,7 +84,7 @@
 			)
 		)
 		(property "Manufacturer Part Number" "TPS22975DSGR"
-			(at 0 0 0)
+			(at -9.652 -3.048 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(hide yes)
@@ -108,10 +108,10 @@
 			)
 		)
 		(symbol "TPS22975DSGR_1_1"
-			(pin input line
+			(pin power_in line
 				(at 3.81 -1.27 90)
 				(length 2.54)
-				(name "CT"
+				(name "VIN"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -129,7 +129,7 @@
 			(pin power_in line
 				(at 6.35 -1.27 90)
 				(length 2.54)
-				(name "GND"
+				(name "VIN"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -165,7 +165,7 @@
 			(pin power_in line
 				(at -6.35 7.62 0)
 				(length 2.54)
-				(name "VIN"
+				(name "VBIAS"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -183,7 +183,7 @@
 			(pin power_in line
 				(at -6.35 2.54 0)
 				(length 2.54)
-				(name "VBIAS"
+				(name "GND"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -198,10 +198,10 @@
 					)
 				)
 			)
-			(pin power_in line
+			(pin input line
 				(at -6.35 5.08 0)
 				(length 2.54)
-				(name "VIN"
+				(name "CT"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -255,7 +255,7 @@
 			(pin power_in line
 				(at 8.89 -1.27 90)
 				(length 2.54)
-				(name "EP"
+				(name "GND"
 					(effects
 						(font
 							(size 1.27 1.27)
