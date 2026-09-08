@@ -29,6 +29,8 @@
 
 #define ANIMATION_UPDATE_RATE_HZ 60
 #define ANIMATION_DURATION_SECONDS 3.0
+#define DATA_QUERY_TASK_STACK_SIZE 12288
+#define DATA_QUERY_TASK_PRIORITY 5
 
 /* app state machine */
 typedef enum application_state {
@@ -53,6 +55,7 @@ typedef struct application_data {
     application_state state;
     esp_timer_handle_t periodic_timer;
     led_strip_handle_t led_strip;
+    TaskHandle_t data_query_task;
     bool timer_is_armed;
     bool have_valid_value;
     double value;
@@ -68,6 +71,8 @@ typedef struct stock_data {
 
 /* prototypes */
 static void periodic_timer_callback(void* arg);
+static void data_query_task(void *arg);
+static void request_stock_data_update(application_data_t *app_data);
 static void initialize_led_strip(application_data_t *app_data);
 static void start_timer(application_data_t *app_data);
 static void stop_timer(application_data_t *app_data);
@@ -113,8 +118,7 @@ void ip_event_handler(void *event_handler_arg, esp_event_base_t event_base, int3
         ESP_LOGI(LOG_TAG, "IP_EVENT_STA_GOT_IP");
 
         application_transition_to_state(&app_data->state, application_state_online);
-        // force an initial update
-        query_stock_data_and_update_led_strip(app_data);
+        request_stock_data_update(app_data);
         start_timer(app_data);
     } else if (0) {
 
@@ -141,6 +145,11 @@ void app_main(void)
     };
 
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &application_data.periodic_timer));
+    BaseType_t task_created = xTaskCreate(data_query_task, "data_query",
+                                         DATA_QUERY_TASK_STACK_SIZE, &application_data,
+                                         DATA_QUERY_TASK_PRIORITY,
+                                         &application_data.data_query_task);
+    ESP_ERROR_CHECK(task_created == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
     ESP_ERROR_CHECK(wifi_manager_initialize_and_connect(wifi_status_changed));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
@@ -150,7 +159,7 @@ void app_main(void)
     wifi_manager_start_reset_button_monitor(wifi_status_changed);
 
     application_transition_to_state(&application_data.state, application_state_online);
-    query_stock_data_and_update_led_strip(&application_data);
+    request_stock_data_update(&application_data);
     start_timer(&application_data);
 
 }
@@ -234,7 +243,23 @@ static void periodic_timer_callback(void* arg)
     int64_t time_since_boot = esp_timer_get_time();
     ESP_LOGI(LOG_TAG, "Periodic timer called, time since boot: %lld us", time_since_boot);
     application_data_t *app_data = arg;
-    query_stock_data_and_update_led_strip(app_data);
+    request_stock_data_update(app_data);
+}
+
+static void request_stock_data_update(application_data_t *app_data)
+{
+    xTaskNotifyGive(app_data->data_query_task);
+}
+
+static void data_query_task(void *arg)
+{
+    application_data_t *app_data = arg;
+    while (true) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        query_stock_data_and_update_led_strip(app_data);
+        ESP_LOGI(LOG_TAG, "Data query task minimum free stack: %u bytes",
+                 (unsigned int)uxTaskGetStackHighWaterMark(NULL));
+    }
 }
 
 static void query_stock_data_and_update_led_strip(application_data_t *app_data) {
