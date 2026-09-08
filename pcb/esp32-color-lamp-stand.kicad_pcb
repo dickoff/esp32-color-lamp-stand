@@ -27261,7 +27261,7 @@
 			(justify left)
 		)
 	)
-	(gr_text "github.com/liyanage/esp32-color-lamp-stand\nv2.0"
+	(gr_text "github.com/liyanage/esp32-color-lamp-stand\nv2.1"
 		(at 17.5 76.5 0)
 		(layer "F.SilkS")
 		(uuid "ae0fa9ff-6ad0-41d3-bd43-d388626a01e3")
