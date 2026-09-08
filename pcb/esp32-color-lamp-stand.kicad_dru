@@ -1,0 +1,14 @@
+(version 1)
+
+#(rule "LED power minimum width"
+#    (condition "A.NetName == '/LED_5V'")
+#    (constraint track_width (min 0.5mm)))
+#
+#(rule "USB input power minimum width"
+#    (condition "A.NetName == '/+5V'")
+#    (constraint track_width (min 0.6mm)))
+#
+#(rule "3V3 power minimum width"
+#    (condition "A.NetName == '/+3V3'")
+#    (constraint track_width (min 0.508mm)))
+#

@@ -149,11 +149,7 @@ def export_bom(kicad_cli: str, work_dir: Path) -> Path:
     )
 
     with path.open(newline="") as source:
-        rows = [
-            row
-            for row in csv.DictReader(source)
-            if not row["Designator"].startswith("TP")
-        ]
+        rows = list(csv.DictReader(source))
 
     missing = [row["Designator"] for row in rows if not row["LCSC Part #"]]
     if missing:
@@ -195,7 +191,7 @@ def export_cpl(kicad_cli: str, work_dir: Path) -> Path:
     )
 
     with raw_path.open(newline="") as source:
-        rows = [row for row in csv.DictReader(source) if not row["Ref"].startswith("TP")]
+        rows = list(csv.DictReader(source))
 
     with output_path.open("w", newline="") as destination:
         writer = csv.writer(

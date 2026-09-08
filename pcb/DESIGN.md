@@ -10,9 +10,9 @@ The controller is an ESP32-S3-WROOM-1-N8R8 module. Its native USB interface is
 connected to the USB-C receptacle through U2, a USBLC6-2SC6 USB ESD-protection
 device. This removes the separate USB-to-serial IC used by the older design.
 
-The module antenna intentionally extends beyond the PCB edge. Keep copper,
-components, and enclosure material away from its antenna region; do not pull
-the module inward merely to fit its body within the outline.
+The module antenna intentionally projects over the large interior PCB cutout.
+Keep copper, components, and enclosure material away from its antenna region;
+do not move the module merely to align its body with the cutout edge.
 
 U3, an AP2112K-3.3 regulator, generates the 3.3 V rail from USB 5 V. The ESP32
 module does not contain a regulator that accepts USB 5 V directly.

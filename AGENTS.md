@@ -9,7 +9,7 @@ preview images are generated artifacts; do not edit them manually.
 Preserve these intentional design choices unless the user explicitly requests
 a redesign:
 
-- The ESP32-S3 module antenna projects beyond the PCB edge.
+- The ESP32-S3 module antenna projects over the large interior PCB cutout.
 - The board uses two copper layers with GND zones on both sides.
 - Test points are present on the PCB but excluded from assembly.
 
@@ -43,4 +43,3 @@ schematic fields so the generated BOM remains reproducible.
 - Do not place, submit, or pay for a manufacturing order without explicit user
   confirmation.
 - Uploading files for analysis is not authorization to place an order.
-
