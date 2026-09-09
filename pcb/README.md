@@ -29,3 +29,11 @@ to `manufacturing/jlcpcb/`:
 The exporter omits test points, requires an LCSC number for every assembled
 part, and verifies that BOM and CPL designators match. Review the previews and
 run JLCPCB's online DFM analysis before ordering.
+
+Some JLCPCB/EasyEDA parts use placement origins or orientations that differ from
+the corresponding KiCad footprints. Vendor-specific translation and rotation
+corrections for those parts are documented in `jlcpcb-placement-offsets.toml`.
+They change only the exported CPL; they do not move PCB footprints or alter the
+Gerbers. The exporter looks up each correction by LCSC part number, verifies the
+KiCad footprint named in the configuration, rotates local position offsets with
+the component, and warns if the expected reference designators have changed.

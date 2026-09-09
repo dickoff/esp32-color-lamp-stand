@@ -1,0 +1,43 @@
+# JLCPCB/EasyEDA package origins sometimes differ from the physical-body
+# origins used by KiCad footprints. Offsets are expressed in footprint-local
+# millimetres and rotated with the component when the CPL is exported.
+
+version = 1
+
+[parts.C165948]
+footprint = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
+local_offset_mm = [0.0, 1.424]
+expected_references = ["J1"]
+reason = "EasyEDA's USB-C model origin differs from the KiCad body origin."
+source = "https://easyeda.com/component/df8405e2fa0e40a984c435ad4c8d5cf3"
+
+[parts.C23380830]
+footprint = "Package_TO_SOT_SMD:SOT-23-5"
+local_offset_mm = [0.0, 0.0]
+rotation_offset_deg = 180.0
+expected_references = ["U3"]
+reason = "EasyEDA's AP2112K-3.3TRG1 model is rotated 180 degrees relative to KiCad's SOT-23-5 orientation."
+source = "https://easyeda.com/api/products/C23380830/components?version=6.5.44"
+
+[parts.C2913201]
+footprint = "RF_Module:ESP32-S3-WROOM-1"
+local_offset_mm = [0.0, -3.650]
+expected_references = ["U1"]
+reason = "EasyEDA's ESP32 module origin differs from the KiCad body origin."
+source = "https://easyeda.com/component/9319c9c0b56747d1a6eed43bdd130f3e"
+
+[parts.C7519]
+footprint = "Package_TO_SOT_SMD:SOT-23-6"
+local_offset_mm = [0.0, 0.0]
+rotation_offset_deg = -90.0
+expected_references = ["U2"]
+reason = "EasyEDA's USBLC6-2SC6 model is rotated 90 degrees counterclockwise relative to KiCad's SOT-23-6 orientation."
+source = "https://easyeda.com/api/products/C7519/components?version=6.5.44"
+
+[parts.C842287]
+footprint = "Package_TO_SOT_SMD:SOT-23-5"
+local_offset_mm = [0.0, 0.0]
+rotation_offset_deg = -90.0
+expected_references = ["U4"]
+reason = "EasyEDA's SOT-25-5 model is rotated 90 degrees relative to KiCad's SOT-23-5 orientation."
+source = "https://easyeda.com/api/products/C842287/components?version=6.5.44"

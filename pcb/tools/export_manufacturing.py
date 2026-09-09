@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import zipfile
 
 
@@ -19,6 +21,7 @@ PROJECT_NAME = "esp32-color-lamp-stand"
 SCHEMATIC = PCB_DIR / f"{PROJECT_NAME}.kicad_sch"
 BOARD = PCB_DIR / f"{PROJECT_NAME}.kicad_pcb"
 DEFAULT_OUTPUT = PCB_DIR / "manufacturing" / "jlcpcb"
+JLCPCB_PLACEMENT_OFFSETS = PCB_DIR / "jlcpcb-placement-offsets.toml"
 GERBER_SUFFIXES = (
     "F_Cu.gtl",
     "B_Cu.gbl",
@@ -30,7 +33,6 @@ GERBER_SUFFIXES = (
     "PTH.drl",
     "NPTH.drl",
 )
-
 
 def find_kicad_cli() -> str:
     configured = os.environ.get("KICAD_CLI")
@@ -168,7 +170,74 @@ def export_bom(kicad_cli: str, work_dir: Path) -> Path:
     return path
 
 
-def export_cpl(kicad_cli: str, work_dir: Path) -> Path:
+def load_placement_offsets(path: Path) -> dict[str, dict]:
+    with path.open("rb") as source:
+        configuration = tomllib.load(source)
+
+    if configuration.get("version") != 1:
+        raise RuntimeError(f"Unsupported placement-offset version in {path}")
+
+    parts = configuration.get("parts")
+    if not isinstance(parts, dict):
+        raise RuntimeError(f"Missing parts table in {path}")
+
+    for lcsc, settings in parts.items():
+        if not isinstance(settings, dict):
+            raise RuntimeError(f"Invalid placement-offset settings for {lcsc}")
+        if not isinstance(settings.get("footprint"), str):
+            raise RuntimeError(f"Missing footprint for placement offset {lcsc}")
+        offset = settings.get("local_offset_mm")
+        if (
+            not isinstance(offset, list)
+            or len(offset) != 2
+            or not all(isinstance(value, (int, float)) for value in offset)
+        ):
+            raise RuntimeError(f"Invalid local_offset_mm for {lcsc}")
+        expected = settings.get("expected_references", [])
+        if not isinstance(expected, list) or not all(
+            isinstance(reference, str) for reference in expected
+        ):
+            raise RuntimeError(f"Invalid expected_references for {lcsc}")
+        rotation_offset = settings.get("rotation_offset_deg", 0)
+        if not isinstance(rotation_offset, (int, float)):
+            raise RuntimeError(f"Invalid rotation_offset_deg for {lcsc}")
+
+    return parts
+
+
+def component_metadata_from_bom(path: Path) -> dict[str, dict[str, str]]:
+    with path.open(newline="") as source:
+        rows = list(csv.DictReader(source))
+
+    return {
+        designator: {
+            "lcsc": row["LCSC Part #"],
+            "footprint": row["Footprint"],
+        }
+        for row in rows
+        for designator in row["Designator"].split(",")
+    }
+
+
+def audit_expected_references(
+    offsets: dict[str, dict], metadata: dict[str, dict[str, str]]
+) -> None:
+    for lcsc, settings in offsets.items():
+        expected = set(settings.get("expected_references", []))
+        actual = {
+            reference
+            for reference, component in metadata.items()
+            if component["lcsc"] == lcsc
+        }
+        if expected != actual:
+            print(
+                f"warning: placement offset {lcsc} expected references "
+                f"{sorted(expected)}, found {sorted(actual)}",
+                file=sys.stderr,
+            )
+
+
+def export_cpl(kicad_cli: str, work_dir: Path, bom: Path) -> Path:
     raw_path = work_dir / "positions.csv"
     output_path = work_dir / "jlcpcb_cpl.csv"
     run(
@@ -192,6 +261,38 @@ def export_cpl(kicad_cli: str, work_dir: Path) -> Path:
 
     with raw_path.open(newline="") as source:
         rows = list(csv.DictReader(source))
+
+    offsets = load_placement_offsets(JLCPCB_PLACEMENT_OFFSETS)
+    metadata = component_metadata_from_bom(bom)
+    audit_expected_references(offsets, metadata)
+
+    for row in rows:
+        reference = row["Ref"]
+        component = metadata.get(reference)
+        if component is None:
+            continue
+
+        lcsc = component["lcsc"]
+        settings = offsets.get(lcsc)
+        if settings is None:
+            continue
+        if component["footprint"] != settings["footprint"]:
+            raise RuntimeError(
+                f"Placement offset {lcsc} expects footprint "
+                f"{settings['footprint']}, but {reference} uses "
+                f"{component['footprint']}"
+            )
+
+        angle = math.radians(float(row["Rot"]))
+        local_x, local_y = settings["local_offset_mm"]
+        board_x = local_x * math.cos(angle) - local_y * math.sin(angle)
+        board_y = local_x * math.sin(angle) + local_y * math.cos(angle)
+        row["PosX"] = f'{float(row["PosX"]) + board_x:.6f}'
+        row["PosY"] = f'{float(row["PosY"]) + board_y:.6f}'
+        rotation = (float(row["Rot"]) + settings.get("rotation_offset_deg", 0)) % 360
+        if rotation > 180:
+            rotation -= 360
+        row["Rot"] = f"{rotation:.6f}"
 
     with output_path.open("w", newline="") as destination:
         writer = csv.writer(
@@ -307,7 +408,7 @@ def main() -> int:
 
         gerber_dir = export_gerbers(kicad_cli, work_dir)
         bom = export_bom(kicad_cli, work_dir)
-        cpl = export_cpl(kicad_cli, work_dir)
+        cpl = export_cpl(kicad_cli, work_dir, bom)
         validate_assembly_files(bom, cpl)
         archive = create_gerber_zip(gerber_dir, work_dir)
         top_preview, bottom_preview = render_previews(kicad_cli, work_dir)
