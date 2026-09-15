@@ -28,6 +28,9 @@ idf.py build
 idf.py flash monitor
 ```
 
+After activating ESP-IDF, the root Makefile provides equivalent convenience
+targets: `make build`, `make flash`, `make monitor`, and `make flash-monitor`.
+
 `main/idf_component.yml` declares the dependency and `dependencies.lock` pins
 the resolved `led_strip` version to 3.0.3 for reproducible builds.
 

@@ -1,12 +1,15 @@
-#
-# This is a project Makefile. It is assumed the directory this Makefile resides in is a
-# project subdirectory.
-#
+IDF_PY ?= idf.py
 
-#used for memmem
-CFLAGS := -D__GNU_VISIBLE
+.PHONY: build flash monitor flash-monitor
 
-PROJECT_NAME := esp32-color-lamp-stand
+build:
+	$(IDF_PY) build
 
-include $(IDF_PATH)/make/project.mk
+flash:
+	$(IDF_PY) flash
 
+monitor:
+	$(IDF_PY) monitor
+
+flash-monitor:
+	$(IDF_PY) flash monitor
