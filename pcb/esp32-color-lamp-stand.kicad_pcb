@@ -4056,7 +4056,7 @@
 		(descr "SMD Tactile Switch, http://www.helloxkb.com/public/images/pdf/TS-1187A-X-X-X.pdf")
 		(tags "SPST Tactile Switch")
 		(property "Reference" "SW1"
-			(at 0 -4 0)
+			(at 4 2.25 0)
 			(layer "F.SilkS")
 			(uuid "68b13ceb-5be2-4d8c-8624-d3cbaf334385")
 			(effects
@@ -4064,10 +4064,11 @@
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify right)
 			)
 		)
 		(property "Value" "RESET"
-			(at 6.5 0 0)
+			(at 4 0.5 0)
 			(layer "F.SilkS")
 			(uuid "b99a10da-794f-4a79-b71b-53439240c756")
 			(effects
@@ -4075,6 +4076,7 @@
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify right)
 			)
 		)
 		(property "Datasheet" ""
@@ -11930,7 +11932,7 @@
 		(descr "SMD Tactile Switch, http://www.helloxkb.com/public/images/pdf/TS-1187A-X-X-X.pdf")
 		(tags "SPST Tactile Switch")
 		(property "Reference" "SW2"
-			(at 0 -3.75 0)
+			(at -4 -2.25 0)
 			(layer "F.SilkS")
 			(uuid "7fc15272-6801-4b9d-9f9f-8520b08a3a77")
 			(effects
@@ -11938,10 +11940,11 @@
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify right)
 			)
 		)
 		(property "Value" "BOOT"
-			(at -6 0.5 0)
+			(at -4 -0.5 0)
 			(layer "F.SilkS")
 			(uuid "6de120f0-7e62-41a2-a7b4-65da3739c9a6")
 			(effects
@@ -11949,6 +11952,7 @@
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify right)
 			)
 		)
 		(property "Datasheet" ""
@@ -27234,7 +27238,7 @@
 		(layer "Edge.Cuts")
 		(uuid "f56ef1ce-25a7-414c-bbd3-d538f60ae253")
 	)
-	(gr_text "LED_5V"
+	(gr_text "${54aea99d-0473-41bb-8316-14c481d5e00b:SHORT_NET_NAME(1)}"
 		(at 92.75 20 0)
 		(layer "F.SilkS")
 		(uuid "8919afb2-3557-4aea-abcb-3b6935823e8f")
@@ -27245,7 +27249,7 @@
 			)
 		)
 	)
-	(gr_text "+5V"
+	(gr_text "${2dc7be09-8351-4ea3-8e98-8c10e2df1404:SHORT_NET_NAME(1)}"
 		(at 107 20 0)
 		(layer "F.SilkS")
 		(uuid "e63e96c2-cae4-43d5-843d-7bf5cdbf2249")
@@ -27256,7 +27260,7 @@
 			)
 		)
 	)
-	(gr_text "+3V3"
+	(gr_text "${710f0d05-dfa4-49ab-a9c4-f7f139949088:SHORT_NET_NAME(1)}"
 		(at 111 20 0)
 		(layer "F.SilkS")
 		(uuid "2f3bf8ab-7974-4ac8-b36e-7ff041553209")
@@ -27267,7 +27271,7 @@
 			)
 		)
 	)
-	(gr_text "GND"
+	(gr_text "${1e2a1a6f-47c3-4b15-8c16-9a96b817a8af:SHORT_NET_NAME(1)}"
 		(at 115.25 20 0)
 		(layer "F.SilkS")
 		(uuid "1acf3a24-2f75-42a9-994a-46c99328e686")
@@ -27278,7 +27282,7 @@
 			)
 		)
 	)
-	(gr_text "LED_DIN"
+	(gr_text "${980f8cd4-3cf1-483f-b727-fbff7c3007e2:SHORT_NET_NAME(1)}"
 		(at 118.25 62.25 0)
 		(layer "F.SilkS")
 		(uuid "87e3a731-f014-4be1-9a3c-8fdcf4b0d8cc")
@@ -27287,6 +27291,30 @@
 				(size 1 1)
 				(thickness 0.15)
 			)
+		)
+	)
+	(gr_text "User Guide"
+		(at 78 53.75 0)
+		(layer "F.SilkS")
+		(uuid "16793aaa-a8d3-4602-97f0-2b8d899f24df")
+		(effects
+			(font
+				(size 1.5 1.3)
+				(thickness 0.3)
+			)
+			(justify left)
+		)
+	)
+	(gr_text "github.com/liyanage/esp32-color-lamp-stand\nv2.1"
+		(at 78 71.5 0)
+		(layer "F.SilkS")
+		(uuid "ae0fa9ff-6ad0-41d3-bd43-d388626a01e3")
+		(effects
+			(font
+				(size 1.5 1.3)
+				(thickness 0.3)
+			)
+			(justify left)
 		)
 	)
 	(gr_text "JLCJLCJLCJLC"
@@ -27301,17 +27329,17 @@
 			(justify left)
 		)
 	)
-	(gr_text "github.com/liyanage/esp32-color-lamp-stand\nv2.1"
-		(at 17.5 76.5 0)
+	(barcode
+		(at 84.45 62 0)
 		(layer "F.SilkS")
-		(uuid "ae0fa9ff-6ad0-41d3-bd43-d388626a01e3")
-		(effects
-			(font
-				(size 1.5 1.5)
-				(thickness 0.3)
-			)
-			(justify left)
-		)
+		(size 12.5 12.5)
+		(text "https://github.com/liyanage/esp32-color-lamp-stand")
+		(text_height 1)
+		(type qr)
+		(ecc_level L)
+		(hide yes)
+		(knockout no)
+		(uuid "ac5ec446-e30f-4db2-be06-e80805999859")
 	)
 	(segment
 		(start 165.05 1.05)

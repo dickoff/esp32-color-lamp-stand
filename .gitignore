@@ -11,3 +11,4 @@ managed_components/
 *.kicad_*.lck
 pcb/manufacturing/gerbers/
 pcb/manufacturing/jlcpcb/gerbers/
+pcb/manufacturing/reports/

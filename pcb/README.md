@@ -16,7 +16,9 @@ make manufacturing
 ```
 
 `make check` runs schematic ERC and PCB DRC, including schematic/PCB parity.
-Error-level violations block the command. Review warnings in KiCad before export.
+Error-level violations block the command. The latest reports remain available
+in `manufacturing/reports/`, including when a check fails. Review warnings in
+KiCad before export.
 
 `make manufacturing` performs the checks and writes these upload-ready files
 to `manufacturing/jlcpcb/`:

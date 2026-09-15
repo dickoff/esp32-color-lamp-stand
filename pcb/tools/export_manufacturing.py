@@ -21,6 +21,7 @@ PROJECT_NAME = "esp32-color-lamp-stand"
 SCHEMATIC = PCB_DIR / f"{PROJECT_NAME}.kicad_sch"
 BOARD = PCB_DIR / f"{PROJECT_NAME}.kicad_pcb"
 DEFAULT_OUTPUT = PCB_DIR / "manufacturing" / "jlcpcb"
+DEFAULT_REPORT_OUTPUT = PCB_DIR / "manufacturing" / "reports"
 JLCPCB_PLACEMENT_OFFSETS = PCB_DIR / "jlcpcb-placement-offsets.toml"
 GERBER_SUFFIXES = (
     "F_Cu.gtl",
@@ -55,9 +56,10 @@ def run(command: list[str]) -> None:
     subprocess.run(command, check=True, shell=False)
 
 
-def check_project(kicad_cli: str, work_dir: Path) -> None:
-    erc_report = work_dir / "erc.rpt"
-    drc_report = work_dir / "drc.rpt"
+def check_project(kicad_cli: str, report_dir: Path) -> None:
+    report_dir.mkdir(parents=True, exist_ok=True)
+    erc_report = report_dir / "erc.rpt"
+    drc_report = report_dir / "drc.rpt"
 
     run(
         [
@@ -396,12 +398,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("check", "export"), nargs="?", default="export")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--report-output", type=Path, default=DEFAULT_REPORT_OUTPUT)
     arguments = parser.parse_args()
 
     kicad_cli = find_kicad_cli()
     with tempfile.TemporaryDirectory(prefix="esp32-lamp-manufacturing-") as temporary:
         work_dir = Path(temporary)
-        check_project(kicad_cli, work_dir)
+        check_project(kicad_cli, arguments.report_output)
         if arguments.command == "check":
             print("ERC and DRC passed")
             return 0
