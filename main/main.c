@@ -8,6 +8,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_app_desc.h"
 #include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_event.h"
@@ -33,6 +34,9 @@
 #define DATA_QUERY_TASK_STACK_SIZE 12288
 #define DATA_QUERY_TASK_PRIORITY 5
 #define WIFI_SETUP_WAVE_PERIOD_US 4000000
+#define WIFI_SETUP_WAVE_MIN_INTENSITY 0.15
+#define VERSION_DISPLAY_HOLD_MS 1200
+#define VERSION_DISPLAY_PAUSE_MS 350
 
 /* app state machine */
 typedef enum application_state {
@@ -86,6 +90,7 @@ static void query_stock_data_and_update_led_strip(application_data_t *app_data);
 static void wifi_status_changed(wifi_setup_status_t status);
 static void show_usb_power_capability(usb_source_measurement_t measurement,
                                       led_strip_handle_t led_strip);
+static void show_firmware_version(led_strip_handle_t led_strip);
 void application_transition_to_state(application_state *current_state, application_state new_state);
 void get_stock_data_nasdaq(stock_data_t *stock_data);
 
@@ -141,6 +146,7 @@ void app_main(void)
     initialize_led_strip(&application_data);
     update_led_strip(pixel_color_black, application_data.led_strip);
     show_usb_power_capability(usb_source, application_data.led_strip);
+    show_firmware_version(application_data.led_strip);
 
     const esp_timer_create_args_t periodic_timer_args = {
             .callback = &periodic_timer_callback,
@@ -186,8 +192,7 @@ static void wifi_status_changed(wifi_setup_status_t status)
             }
             double phase = (double)((now_us - portal_started_us) % WIFI_SETUP_WAVE_PERIOD_US)
                            / WIFI_SETUP_WAVE_PERIOD_US;
-            // Very low PWM values have large relative steps, especially under
-            // the USB-default brightness cap; keep the trough out of that range.
+            // Keep a faint floor so the ring remains visible behind the crest.
             // Scale channels, not the five-bit brightness, to avoid visible steps
             // and a clipped, flat peak on low-power USB sources.
             pixel_color_t pixels[LED_COUNT];
@@ -195,7 +200,8 @@ static void wifi_status_changed(wifi_setup_status_t status)
                 // Divide by LED_COUNT, not LED_COUNT - 1, so the wrap from
                 // D32 to D1 has the same phase spacing as every other pair.
                 double position = (double)pixel / LED_COUNT;
-                double intensity = 0.35 + 0.65 *
+                double intensity = WIFI_SETUP_WAVE_MIN_INTENSITY +
+                    (1.0 - WIFI_SETUP_WAVE_MIN_INTENSITY) *
                     (0.5 + 0.5 * cos((position - phase) * 2.0 * M_PI));
                 pixels[pixel] = (pixel_color_t){.brightness = 6,
                                                 .r = (uint8_t)lround(255 * intensity),
@@ -412,6 +418,46 @@ static void show_usb_power_capability(usb_source_measurement_t measurement,
         }
         update_led_strip_pixels(pixels, led_strip);
         vTaskDelay(pdMS_TO_TICKS(70));
+    }
+}
+
+static void show_firmware_version(led_strip_handle_t led_strip)
+{
+    const char *version = esp_app_get_description()->version;
+    unsigned int parts[3];
+    char trailing;
+    if (sscanf(version, "%u.%u.%u%c", &parts[0], &parts[1], &parts[2], &trailing) != 3) {
+        ESP_LOGW(LOG_TAG, "Skipping LED version display: invalid version '%s'", version);
+        return;
+    }
+    for (int part = 0; part < 3; ++part) {
+        if (parts[part] > LED_COUNT) {
+            ESP_LOGW(LOG_TAG, "Skipping LED version display: '%s' exceeds %d LEDs",
+                     version, LED_COUNT);
+            return;
+        }
+    }
+
+    const pixel_color_t backgrounds[3] = {
+        // Dim channels rather than brightness so the contrast survives the USB cap.
+        {.brightness = 6, .b = 0x55},
+        {.brightness = 6, .r = 0x2b, .b = 0x55},
+        {.brightness = 6, .r = 0x55, .g = 0x20},
+    };
+    const pixel_color_t white = {.brightness = 6, .r = 0xff, .g = 0xff, .b = 0xff};
+    pixel_color_t pixels[LED_COUNT];
+
+    ESP_LOGI(LOG_TAG, "Displaying firmware version %s", version);
+    vTaskDelay(pdMS_TO_TICKS(VERSION_DISPLAY_PAUSE_MS));
+    for (int part = 0; part < 3; ++part) {
+        // The colored remainder identifies the part even when its count is zero.
+        for (int pixel = 0; pixel < LED_COUNT; ++pixel) {
+            pixels[pixel] = (unsigned int)pixel < parts[part] ? white : backgrounds[part];
+        }
+        update_led_strip_pixels(pixels, led_strip);
+        vTaskDelay(pdMS_TO_TICKS(VERSION_DISPLAY_HOLD_MS));
+        update_led_strip(pixel_color_black, led_strip);
+        vTaskDelay(pdMS_TO_TICKS(VERSION_DISPLAY_PAUSE_MS));
     }
 }
 

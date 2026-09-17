@@ -29,7 +29,8 @@ Fit the translucent cover, then place the object you want to illuminate on top.
 
 ## Wi-Fi configuration
 
-On first use, an amber wave travels around the stand and it creates a temporary Wi-Fi network named
+On first use, an amber wave travels around the stand and it creates a temporary
+Wi-Fi network named
 `ColorLamp-Setup-XXXX`, where the last four characters are unique to your stand.
 
 1. On a phone, tablet, or computer, open Wi-Fi settings and join that network.
@@ -55,6 +56,9 @@ also activates the ESP32's programming mode during startup.
 
 ## What the lights during startup mean
 
+Every startup shows the power check, then the firmware version, then the Wi-Fi
+status.
+
 ### Power check
 
 Immediately after power-on, a short sweep reports how much current the connected
@@ -73,9 +77,23 @@ The sweep fills, pauses for about a second, and fades away.
 This is the capability advertised by the power source, not a measurement of how
 much current the stand is presently consuming.
 
+### Firmware version
+
+After the power check, three short displays show the firmware version in
+**major.minor.patch** order. Count only the **bright white LEDs** in each display.
+The rest of the ring glows dimly in a background color to identify the part:
+
+- **Blue background:** Major version.
+- **Purple background:** Minor version.
+- **Amber background:** Patch version.
+
+For example, version **2.2.0** shows two white LEDs on blue, two white LEDs on
+purple, then an entirely dim amber ring. **No white LEDs means zero**—the colored
+background still appears.
+
 ### Wi-Fi and setup
 
-After the power check, the entire perimeter shows the Wi-Fi state.
+After the version display, the entire perimeter shows the Wi-Fi state.
 
 ![Wi-Fi setup and connection light patterns](docs/readme-resources/wifi-status.svg)
 

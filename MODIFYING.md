@@ -9,8 +9,9 @@ The firmware is a small ESP-IDF 6 application for the
 ESP32-S3-WROOM-1-N8R8. At a high level:
 
 - `main/main.c` starts the hardware, configures Espressif's RMT/DMA-backed
-  LED-strip driver, displays the USB power indication, reacts to Wi-Fi state
-  changes, retrieves the stock value, and drives the LED effect.
+  LED-strip driver, displays the USB power indication and firmware version,
+  reacts to Wi-Fi state changes, retrieves the stock value, and drives the LED
+  effect.
 - `main/wifi_manager.c` owns saved credentials, normal Wi-Fi connection, the
   temporary setup access point, captive web portal, and BOOT-button reset.
 - `main/provisioning.html` is the setup page embedded in the firmware image.
@@ -33,6 +34,14 @@ targets: `make build`, `make flash`, `make monitor`, and `make flash-monitor`.
 
 `main/idf_component.yml` declares the dependency and `dependencies.lock` pins
 the resolved `led_strip` version to 3.0.3 for reproducible builds.
+
+The root `version.txt` defines the firmware version as `major.minor.patch`.
+ESP-IDF embeds it in the image, overriding Git-derived versions and their dirty
+suffixes. The startup display reads this same value through
+`esp_app_get_description()`. Keep release tags such as `firmware-v2.2.0` aligned
+with this file; PCB tags do not affect the firmware version. Editing the file
+automatically triggers build reconfiguration. The LED version display supports
+values from 0 to 32 for each part; other versions are logged but not displayed.
 
 The hardware fixes only a few firmware-facing GPIO choices:
 
