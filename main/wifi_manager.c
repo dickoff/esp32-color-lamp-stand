@@ -13,6 +13,7 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -499,8 +500,8 @@ static esp_err_t start_config_portal(void)
     xTaskCreate(dns_server_task, "captive-dns", 4096, NULL, 4, NULL);
 
     ESP_LOGI(LOG_TAG, "Connect to %s and open http://%s", access_point_name, PORTAL_IP);
-    bool bright = false;
     while (true) {
+        bool bright = (esp_timer_get_time() / 350000) % 2 != 0;
         portal_state_t state = get_portal_state();
         if (s_status_callback != NULL) {
             if (state == PORTAL_STATE_TESTING) {
@@ -510,11 +511,10 @@ static esp_err_t start_config_portal(void)
             } else if (state == PORTAL_STATE_CONNECTED) {
                 s_status_callback(WIFI_SETUP_STATUS_CONNECTED);
             } else {
-                s_status_callback(bright ? WIFI_SETUP_STATUS_PORTAL : WIFI_SETUP_STATUS_PORTAL_DIM);
+                s_status_callback(WIFI_SETUP_STATUS_PORTAL);
             }
         }
-        bright = !bright;
-        vTaskDelay(pdMS_TO_TICKS(350));
+        vTaskDelay(pdMS_TO_TICKS(25));
     }
     return ESP_OK;
 }

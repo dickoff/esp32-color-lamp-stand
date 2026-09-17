@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -31,6 +32,7 @@
 #define ANIMATION_DURATION_SECONDS 3.0
 #define DATA_QUERY_TASK_STACK_SIZE 12288
 #define DATA_QUERY_TASK_PRIORITY 5
+#define WIFI_SETUP_BREATH_PERIOD_US 4000000
 
 /* app state machine */
 typedef enum application_state {
@@ -166,17 +168,32 @@ void app_main(void)
 
 static void wifi_status_changed(wifi_setup_status_t status)
 {
+    static int64_t portal_started_us = -1;
+    if (status != WIFI_SETUP_STATUS_PORTAL) {
+        portal_started_us = -1;
+    }
     pixel_color_t color = pixel_color_black;
     switch (status) {
         case WIFI_SETUP_STATUS_CONNECTING:
             color = (pixel_color_t){.brightness = 6, .b = 0xff};
             break;
-        case WIFI_SETUP_STATUS_PORTAL:
-            color = (pixel_color_t){.brightness = 12, .r = 0xff, .g = 0x60};
+        case WIFI_SETUP_STATUS_PORTAL: {
+            int64_t now_us = esp_timer_get_time();
+            if (portal_started_us < 0) {
+                portal_started_us = now_us;
+            }
+            double phase = (double)((now_us - portal_started_us) % WIFI_SETUP_BREATH_PERIOD_US)
+                           / WIFI_SETUP_BREATH_PERIOD_US;
+            // Very low PWM values have large relative steps, especially under
+            // the USB-default brightness cap; keep the trough out of that range.
+            double intensity = 0.35 + 0.65 * (0.5 - 0.5 * cos(phase * 2.0 * M_PI));
+            // Scale channels, not the five-bit brightness, to avoid visible steps
+            // and a clipped, flat peak on low-power USB sources.
+            color = (pixel_color_t){.brightness = 6,
+                                    .r = (uint8_t)lround(255 * intensity),
+                                    .g = (uint8_t)lround(96 * intensity)};
             break;
-        case WIFI_SETUP_STATUS_PORTAL_DIM:
-            color = (pixel_color_t){.brightness = 3, .r = 0xff, .g = 0x60};
-            break;
+        }
         case WIFI_SETUP_STATUS_TESTING:
             color = (pixel_color_t){.brightness = 12, .b = 0xff};
             break;

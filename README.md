@@ -80,8 +80,8 @@ After the power check, the entire perimeter shows the Wi-Fi state.
 ![Wi-Fi setup and connection light patterns](docs/readme-resources/wifi-status.svg)
 
 - **Solid blue:** Connecting to the saved Wi-Fi network.
-- **Pulsing amber:** Waiting for you to join `ColorLamp-Setup-XXXX` and complete
-  setup.
+- **Slowly breathing amber (a four-second cycle):** Waiting for you to join
+  `ColorLamp-Setup-XXXX` and complete setup.
 - **Pulsing blue:** Testing the Wi-Fi name and password you entered.
 - **Solid green:** Connected successfully. After initial setup, the stand soon
   restarts automatically.
