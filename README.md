@@ -29,7 +29,7 @@ Fit the translucent cover, then place the object you want to illuminate on top.
 
 ## Wi-Fi configuration
 
-On first use, the stand pulses amber and creates a temporary Wi-Fi network named
+On first use, an amber wave travels around the stand and it creates a temporary Wi-Fi network named
 `ColorLamp-Setup-XXXX`, where the last four characters are unique to your stand.
 
 1. On a phone, tablet, or computer, open Wi-Fi settings and join that network.
@@ -80,7 +80,7 @@ After the power check, the entire perimeter shows the Wi-Fi state.
 ![Wi-Fi setup and connection light patterns](docs/readme-resources/wifi-status.svg)
 
 - **Solid blue:** Connecting to the saved Wi-Fi network.
-- **Slowly breathing amber (a four-second cycle):** Waiting for you to join
+- **Slow amber wave (one lap every four seconds):** Waiting for you to join
   `ColorLamp-Setup-XXXX` and complete setup.
 - **Pulsing blue:** Testing the Wi-Fi name and password you entered.
 - **Solid green:** Connected successfully. After initial setup, the stand soon

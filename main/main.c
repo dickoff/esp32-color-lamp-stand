@@ -32,7 +32,7 @@
 #define ANIMATION_DURATION_SECONDS 3.0
 #define DATA_QUERY_TASK_STACK_SIZE 12288
 #define DATA_QUERY_TASK_PRIORITY 5
-#define WIFI_SETUP_BREATH_PERIOD_US 4000000
+#define WIFI_SETUP_WAVE_PERIOD_US 4000000
 
 /* app state machine */
 typedef enum application_state {
@@ -80,6 +80,8 @@ static void start_timer(application_data_t *app_data);
 static void stop_timer(application_data_t *app_data);
 esp_err_t _http_event_handle_nasdaq(esp_http_client_event_t *evt);
 static void update_led_strip(pixel_color_t pixel_color, led_strip_handle_t led_strip);
+static void update_led_strip_pixels(const pixel_color_t pixels[LED_COUNT],
+                                    led_strip_handle_t led_strip);
 static void query_stock_data_and_update_led_strip(application_data_t *app_data);
 static void wifi_status_changed(wifi_setup_status_t status);
 static void show_usb_power_capability(usb_source_measurement_t measurement,
@@ -182,17 +184,25 @@ static void wifi_status_changed(wifi_setup_status_t status)
             if (portal_started_us < 0) {
                 portal_started_us = now_us;
             }
-            double phase = (double)((now_us - portal_started_us) % WIFI_SETUP_BREATH_PERIOD_US)
-                           / WIFI_SETUP_BREATH_PERIOD_US;
+            double phase = (double)((now_us - portal_started_us) % WIFI_SETUP_WAVE_PERIOD_US)
+                           / WIFI_SETUP_WAVE_PERIOD_US;
             // Very low PWM values have large relative steps, especially under
             // the USB-default brightness cap; keep the trough out of that range.
-            double intensity = 0.35 + 0.65 * (0.5 - 0.5 * cos(phase * 2.0 * M_PI));
             // Scale channels, not the five-bit brightness, to avoid visible steps
             // and a clipped, flat peak on low-power USB sources.
-            color = (pixel_color_t){.brightness = 6,
-                                    .r = (uint8_t)lround(255 * intensity),
-                                    .g = (uint8_t)lround(96 * intensity)};
-            break;
+            pixel_color_t pixels[LED_COUNT];
+            for (int pixel = 0; pixel < LED_COUNT; ++pixel) {
+                // Divide by LED_COUNT, not LED_COUNT - 1, so the wrap from
+                // D32 to D1 has the same phase spacing as every other pair.
+                double position = (double)pixel / LED_COUNT;
+                double intensity = 0.35 + 0.65 *
+                    (0.5 + 0.5 * cos((position - phase) * 2.0 * M_PI));
+                pixels[pixel] = (pixel_color_t){.brightness = 6,
+                                                .r = (uint8_t)lround(255 * intensity),
+                                                .g = (uint8_t)lround(96 * intensity)};
+            }
+            update_led_strip_pixels(pixels, application_data.led_strip);
+            return;
         }
         case WIFI_SETUP_STATUS_TESTING:
             color = (pixel_color_t){.brightness = 12, .b = 0xff};
