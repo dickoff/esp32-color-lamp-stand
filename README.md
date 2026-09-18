@@ -124,3 +124,6 @@ After the version display, the entire perimeter shows the Wi-Fi state.
 The hardware and especially firmware are open for experimentation. See the
 [modification guide](MODIFYING.md) for the source layout, fixed GPIO assignments,
 KiCad design overview, and build workflow.
+
+If you're working with an AI coding agent, point it at this repository and ask
+it to read [MODIFYING.md](MODIFYING.md) before making changes.
