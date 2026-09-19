@@ -12,9 +12,20 @@ completely different or custom with the LEDs and the Internet connection.
 
 You need:
 
-- A USB-C power source that can provide at least 1.5 A. A USB-C wall charger is
-  ideal; a computer USB-C port also works.
-- A USB-C cable for power.
+- A USB-C wall charger and a USB-C-to-USB-C cable. For full brightness, use a
+  charger that provides **5 V at 3 A**.
+
+Good options are:
+
+- This [Anker 20 W USB-C charger kit](https://www.amazon.com/dp/B0CP7NWH6L),
+  which includes two compact chargers and two cables. Each charger provides
+  5 V at 3 A.
+- The inexpensive [IKEA SJÖSS 20 W USB-C charger](https://www.ikea.com/us/en/p/sjoess-20w-1-port-usb-charger-10618445/),
+  which also provides 5 V at 3 A. Its USB-C cable is sold separately.
+
+Either option provides enough power for the stand's highest brightness setting.
+A computer USB-C port also works, but the stand may automatically use a lower
+brightness if the port advertises less available current.
 
 Feed the cable through the base and tie a loose knot inside for strain relief,
 as shown below. Do not pull the knot tight enough to damage the cable.
