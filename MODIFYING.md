@@ -241,11 +241,11 @@ symbol library and `sym-lib-table`. See [the hardware design notes](pcb/DESIGN.m
 for more context. The images below are published for convenient inspection;
 use the KiCad files when making changes.
 
-[![Complete board schematic](docs/technical-resources/esp32-color-lamp-stand.svg)](docs/technical-resources/esp32-color-lamp-stand.svg)
+[![Complete board schematic](docs/modifying-resources/esp32-color-lamp-stand.svg)](docs/modifying-resources/esp32-color-lamp-stand.svg)
 
 *Complete schematic — select the image to open the full-resolution vector view.*
 
-[![Top copper PCB layout](docs/technical-resources/pcb-layout-top.svg)](docs/technical-resources/pcb-layout-top.svg)
+[![Top copper PCB layout](docs/modifying-resources/pcb-layout-top.svg)](docs/modifying-resources/pcb-layout-top.svg)
 
 *Top copper, solder mask, silkscreen, holes, and board outline.*
 
@@ -301,3 +301,36 @@ the part-specific corrections in `pcb/jlcpcb-placement-offsets.toml`. The
 existing finished layout and exports are useful references, not substitutes for
 checking a modified design. Manufacturing analysis or file export does not
 authorize an agent to submit or pay for an order.
+
+## Make your own base
+
+The [3D model for the lamp base](https://a360.co/4h9BVom) is publicly available
+in downloadable Fusion 360 format. Use it to make a replacement base or
+experiment with a different color or material to complement the object you want
+to display.
+
+There are two model variants: one intended for 3D printing, and another intended
+for machining a positive from which to make a silicone mold. The mold can then
+be used to cast bases in various materials. I've had good results with concrete
+mix and pigmented resin.
+
+![Lamp bases in several colors and materials](docs/modifying-resources/printed-base-color-options.jpg)
+
+*Examples of bases made in different colors and materials. From top to bottom: OVV3D Wood PLA Wood Oak, [Prusament Woodfill Linden Light](https://www.prusa3d.com/product/prusament-woodfill-linden-lignt-1-kg/), [colorFabb Woodfill](https://colorfabb.us/woodfill). colorFabb looks best.*
+
+The 3D-printing model is designed for a two-color print, with a white inner rim
+that reflects more LED light upward. You can also slice and print the whole base
+in a single material.
+
+![Printed bases, diffusers, and assembled circuit boards](docs/modifying-resources/base-prototypes-and-pcbs.jpg)
+
+*Printed base variants, using wood and [carbon fiber PLA](https://shop.polymaker.com/products/polylite-pla-cf) for the outer shell.*
+
+![Mold-making setup for casting a lamp base](docs/modifying-resources/silicone-mold-and-master.jpg)
+
+*A mold-making setup for casting the base in concrete, pigmented resin, or
+another suitable material.*
+
+![Finished lamp base cast in concrete](docs/modifying-resources/cast-concrete-base.jpg)
+
+*A finished concrete base removed from the mold.*
