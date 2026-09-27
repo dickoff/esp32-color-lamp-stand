@@ -155,7 +155,7 @@ static void save_state(const lamp_state_t *state)
 
 static void hue_saturation_to_rgb(uint8_t hue, uint8_t saturation, lamp_frame_t *frame)
 {
-    float h = hue * 360.0f / (LAMP_HUE_MAX + 1) / 60.0f;
+    float h = hue * 360.0f / LAMP_HUE_MAX / 60.0f;
     float s = (float)saturation / LAMP_SATURATION_MAX;
     int sector = (int)h % 6;
     float fraction = h - floorf(h);

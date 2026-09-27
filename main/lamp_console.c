@@ -22,7 +22,7 @@ static void print_state(void)
                lroundf(1000000.0f / state.color_temperature_mireds));
     } else {
         printf("color: hue %u (%ld deg), saturation %u (%ld%%)\n", state.hue,
-               lroundf(state.hue * 360.0f / (LAMP_HUE_MAX + 1)), state.saturation,
+               lroundf(state.hue * 360.0f / LAMP_HUE_MAX), state.saturation,
                lroundf(state.saturation * 100.0f / LAMP_SATURATION_MAX));
     }
     printf("stock mode: %s, indication: %s\n", state.stock_mode ? "on" : "off",
@@ -66,7 +66,7 @@ static int lamp_command(int argc, char **argv)
         if (degrees < 0 || degrees > 359 || percent < 0 || percent > 100) {
             return usage();
         }
-        lamp_set_hue_saturation(lroundf(degrees * (LAMP_HUE_MAX + 1) / 360.0f) % (LAMP_HUE_MAX + 1),
+        lamp_set_hue_saturation(lroundf(degrees * LAMP_HUE_MAX / 360.0f),
                                 lroundf(percent * LAMP_SATURATION_MAX / 100.0f));
     } else if (argc == 3 && strcmp(action, "ct") == 0) {
         int kelvin = atoi(argv[2]);

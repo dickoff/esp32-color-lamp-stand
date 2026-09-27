@@ -19,6 +19,7 @@
 #include "lamp.h"
 #include "lamp_console.h"
 #include "led_output.h"
+#include "matter_lamp.h"
 #include "pixel.h"
 #include "usb_source.h"
 #include "wifi_manager.h"
@@ -157,6 +158,11 @@ void app_main(void)
     ESP_ERROR_CHECK(lamp_add_change_callback(lamp_changed, &application_data));
     ESP_ERROR_CHECK(lamp_start());
     ESP_ERROR_CHECK(lamp_console_start());
+    // The lamp and stock indicator keep working if Matter cannot start.
+    esp_err_t matter_err = matter_lamp_start();
+    if (matter_err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "Matter unavailable: %s", esp_err_to_name(matter_err));
+    }
 
     application_transition_to_state(&application_data.state, application_state_online);
     request_stock_data_update(&application_data);

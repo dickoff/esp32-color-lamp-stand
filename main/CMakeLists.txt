@@ -1,8 +1,10 @@
 idf_component_register(
-    SRCS "main.c" "lamp.c" "lamp_console.c" "led_output.c" "pixel.c" "usb_source.c"
-         "wifi_manager.c"
+    SRCS "main.c" "lamp.c" "lamp_console.c" "led_output.c" "matter_lamp.cpp" "pixel.c"
+         "usb_source.c" "wifi_manager.c"
     INCLUDE_DIRS "."
     EMBED_TXTFILES "provisioning.html"
     REQUIRES console esp_adc esp_app_format esp_driver_gpio esp_event esp_http_client
-             esp_http_server esp_netif esp_timer esp_wifi lwip mbedtls nvs_flash
+             esp_http_server esp_matter esp_netif esp_timer esp_wifi lwip mbedtls nvs_flash
 )
+
+target_compile_options(${COMPONENT_LIB} PRIVATE "-DCHIP_HAVE_CONFIG_H")

@@ -5,11 +5,15 @@
 
 #include "esp_err.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Units follow the Matter OnOff, LevelControl, and ColorControl clusters so
 // the Matter layer can pass attribute values through without conversion.
 #define LAMP_LEVEL_MIN 1
 #define LAMP_LEVEL_MAX 254
-#define LAMP_HUE_MAX 254
+#define LAMP_HUE_MAX 254  // 360 degrees
 #define LAMP_SATURATION_MAX 254
 #define LAMP_COLOR_TEMPERATURE_MIN_MIREDS 153  // ~6500 K
 #define LAMP_COLOR_TEMPERATURE_MAX_MIREDS 500  // 2000 K
@@ -59,3 +63,7 @@ void lamp_set_stock_mode(bool enabled);
 void lamp_set_stock_indication(lamp_stock_indication_t indication);
 
 const char *lamp_stock_indication_name(lamp_stock_indication_t indication);
+
+#ifdef __cplusplus
+}
+#endif
