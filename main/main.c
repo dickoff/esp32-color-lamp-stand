@@ -5,7 +5,6 @@
 
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_app_desc.h"
@@ -17,7 +16,9 @@
 #include "esp_timer.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
-#include "led_strip.h"
+#include "lamp.h"
+#include "lamp_console.h"
+#include "led_output.h"
 #include "pixel.h"
 #include "usb_source.h"
 #include "wifi_manager.h"
@@ -25,12 +26,6 @@
 // Test mode uses a random number instead of performing an HTTP request
 #define LED_TEST_MODE 0
 
-#define LED_DATA_GPIO 13
-
-#define LED_COUNT 32
-
-#define ANIMATION_UPDATE_RATE_HZ 60
-#define ANIMATION_DURATION_SECONDS 3.0
 #define DATA_QUERY_TASK_STACK_SIZE 12288
 #define DATA_QUERY_TASK_PRIORITY 5
 #define WIFI_SETUP_WAVE_PERIOD_US 4000000
@@ -60,12 +55,8 @@ char *application_state_label_for_value(application_state state) {
 typedef struct application_data {
     application_state state;
     esp_timer_handle_t periodic_timer;
-    led_strip_handle_t led_strip;
     TaskHandle_t data_query_task;
     bool timer_is_armed;
-    bool have_valid_value;
-    double value;
-    pixel_color_t current_pixel_color;
 } application_data_t;
 
 static application_data_t application_data;
@@ -79,24 +70,18 @@ typedef struct stock_data {
 static void periodic_timer_callback(void* arg);
 static void data_query_task(void *arg);
 static void request_stock_data_update(application_data_t *app_data);
-static void initialize_led_strip(application_data_t *app_data);
 static void start_timer(application_data_t *app_data);
 static void stop_timer(application_data_t *app_data);
 esp_err_t _http_event_handle_nasdaq(esp_http_client_event_t *evt);
-static void update_led_strip(pixel_color_t pixel_color, led_strip_handle_t led_strip);
-static void update_led_strip_pixels(const pixel_color_t pixels[LED_COUNT],
-                                    led_strip_handle_t led_strip);
-static void query_stock_data_and_update_led_strip(application_data_t *app_data);
+static void query_stock_data_and_update_lamp(void);
+static void lamp_changed(const lamp_state_t *state, void *context);
 static void wifi_status_changed(wifi_setup_status_t status);
-static void show_usb_power_capability(usb_source_measurement_t measurement,
-                                      led_strip_handle_t led_strip);
-static void show_firmware_version(led_strip_handle_t led_strip);
+static void show_usb_power_capability(usb_source_measurement_t measurement);
+static void show_firmware_version(void);
 void application_transition_to_state(application_state *current_state, application_state new_state);
 void get_stock_data_nasdaq(stock_data_t *stock_data);
 
 static const char *LOG_TAG = "color-lamp-stand-app";
-static uint8_t maximum_led_brightness = 3;
-static SemaphoreHandle_t led_mutex;
 
 void application_transition_to_state(application_state *current_state, application_state new_state) {
     ESP_LOGI(LOG_TAG, "*** Application state transition from %s to %s\n", application_state_label_for_value(*current_state), application_state_label_for_value(new_state));
@@ -141,12 +126,11 @@ void app_main(void)
     ESP_LOGI(LOG_TAG, "Starting color lamp stand");
 
     usb_source_measurement_t usb_source = usb_source_measure();
-    maximum_led_brightness = usb_source.maximum_led_brightness;
 
-    initialize_led_strip(&application_data);
-    update_led_strip(pixel_color_black, application_data.led_strip);
-    show_usb_power_capability(usb_source, application_data.led_strip);
-    show_firmware_version(application_data.led_strip);
+    ESP_ERROR_CHECK(led_output_initialize(usb_source.maximum_led_brightness));
+    led_output_fill(pixel_color_black);
+    show_usb_power_capability(usb_source);
+    show_firmware_version();
 
     const esp_timer_create_args_t periodic_timer_args = {
             .callback = &periodic_timer_callback,
@@ -167,6 +151,12 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                                ip_event_handler, &application_data));
     wifi_manager_start_reset_button_monitor(wifi_status_changed);
+
+    // The Wi-Fi manager has initialized NVS by the time it returns.
+    ESP_ERROR_CHECK(lamp_initialize());
+    ESP_ERROR_CHECK(lamp_add_change_callback(lamp_changed, &application_data));
+    ESP_ERROR_CHECK(lamp_start());
+    ESP_ERROR_CHECK(lamp_console_start());
 
     application_transition_to_state(&application_data.state, application_state_online);
     request_stock_data_update(&application_data);
@@ -207,7 +197,7 @@ static void wifi_status_changed(wifi_setup_status_t status)
                                                 .r = (uint8_t)lround(255 * intensity),
                                                 .g = (uint8_t)lround(96 * intensity)};
             }
-            update_led_strip_pixels(pixels, application_data.led_strip);
+            led_output_show_pixels(pixels);
             return;
         }
         case WIFI_SETUP_STATUS_TESTING:
@@ -226,29 +216,17 @@ static void wifi_status_changed(wifi_setup_status_t status)
             color = (pixel_color_t){.brightness = 15, .r = 0xff};
             break;
     }
-    update_led_strip(color, application_data.led_strip);
+    led_output_fill(color);
 }
 
-static void initialize_led_strip(application_data_t *app_data)
+static void lamp_changed(const lamp_state_t *state, void *context)
 {
-    led_strip_config_t strip_config = {
-        .strip_gpio_num = LED_DATA_GPIO,
-        .max_leds = LED_COUNT,
-        .led_model = LED_MODEL_WS2812,
-        .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
-        .flags.invert_out = false,
-    };
-    led_strip_rmt_config_t rmt_config = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,
-        .resolution_hz = 10 * 1000 * 1000,
-        .mem_block_symbols = 0,
-        .flags.with_dma = true,
-    };
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config,
-                                             &app_data->led_strip));
-
-    led_mutex = xSemaphoreCreateMutex();
-    ESP_ERROR_CHECK(led_mutex == NULL ? ESP_ERR_NO_MEM : ESP_OK);
+    static bool stock_mode_was_on = true;
+    application_data_t *app_data = context;
+    if (state->stock_mode && !stock_mode_was_on) {
+        request_stock_data_update(app_data);
+    }
+    stock_mode_was_on = state->stock_mode;
 }
 
 static void start_timer(application_data_t *app_data) {
@@ -286,16 +264,20 @@ static void request_stock_data_update(application_data_t *app_data)
 
 static void data_query_task(void *arg)
 {
-    application_data_t *app_data = arg;
+    (void)arg;
     while (true) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        query_stock_data_and_update_led_strip(app_data);
+        query_stock_data_and_update_lamp();
         ESP_LOGI(LOG_TAG, "Data query task minimum free stack: %u bytes",
                  (unsigned int)uxTaskGetStackHighWaterMark(NULL));
     }
 }
 
-static void query_stock_data_and_update_led_strip(application_data_t *app_data) {
+static void query_stock_data_and_update_lamp(void) {
+    if (!lamp_get_state().stock_mode) {
+        ESP_LOGI(LOG_TAG, "Stock mode off, skipping query");
+        return;
+    }
     ESP_LOGI(LOG_TAG, "Querying data");
 
     stock_data_t data;
@@ -308,75 +290,24 @@ static void query_stock_data_and_update_led_strip(application_data_t *app_data) 
     get_stock_data_nasdaq(&data);
 #endif
 
-    pixel_color_t new_color = pixel_color_white;
+    lamp_stock_indication_t indication = LAMP_STOCK_UNKNOWN;
     if (data.have_valid_value) {
         ESP_LOGI(LOG_TAG, "New value %f", data.value);
-        new_color = data.value < 0 ? pixel_color_red : pixel_color_green;
+        indication = data.value < 0 ? LAMP_STOCK_DOWN : LAMP_STOCK_UP;
     } else {
         ESP_LOGE(LOG_TAG, "Unable to get valid value");
     }
-
-    if (pixel_color_equal(app_data->current_pixel_color, new_color)) {
-        ESP_LOGI(LOG_TAG, "No value/color change, skipping LED update");
-        return;
-    }
-
-    int update_steps = ANIMATION_DURATION_SECONDS * ANIMATION_UPDATE_RATE_HZ;
-    double update_increment = 1.0 / update_steps;
-    TickType_t update_step_delay_ticks = ((TickType_t)(ANIMATION_DURATION_SECONDS * 1000) / update_steps / portTICK_PERIOD_MS);
-    for (double x = 0.0; x <= 1.0; x += update_increment) {
-        // pixel_color_t step_color = interpolate_pixel_color(app_data->current_pixel_color, new_color, x);
-        pixel_color_t step_color = interpolate_pixel_color3(app_data->current_pixel_color, pixel_color_black, new_color, x);
-        update_led_strip(step_color, app_data->led_strip);
-        vTaskDelay(update_step_delay_ticks);
-    }
-
-    app_data->current_pixel_color = new_color;
-
+    lamp_set_stock_indication(indication);
 }
 
-static uint8_t apply_brightness(uint8_t channel, uint8_t brightness)
-{
-    return ((uint16_t)channel * brightness + 15) / 31;
-}
-
-static void update_led_strip_pixels(const pixel_color_t pixels[LED_COUNT],
-                                    led_strip_handle_t led_strip)
-{
-    xSemaphoreTake(led_mutex, portMAX_DELAY);
-
-    for (int pixel = 0; pixel < LED_COUNT; ++pixel) {
-        uint8_t brightness = pixels[pixel].brightness;
-        if (brightness > maximum_led_brightness) {
-            brightness = maximum_led_brightness;
-        }
-        uint8_t red = apply_brightness(pixels[pixel].r, brightness);
-        uint8_t green = apply_brightness(pixels[pixel].g, brightness);
-        uint8_t blue = apply_brightness(pixels[pixel].b, brightness);
-        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, pixel, red, green, blue));
-    }
-    ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-    xSemaphoreGive(led_mutex);
-}
-
-static void update_led_strip(pixel_color_t pixel_color, led_strip_handle_t led_strip)
-{
-    pixel_color_t pixels[LED_COUNT];
-    for (int pixel = 0; pixel < LED_COUNT; ++pixel) {
-        pixels[pixel] = pixel_color;
-    }
-    update_led_strip_pixels(pixels, led_strip);
-}
-
-static void show_usb_power_capability(usb_source_measurement_t measurement,
-                                      led_strip_handle_t led_strip)
+static void show_usb_power_capability(usb_source_measurement_t measurement)
 {
     if (!measurement.measurement_valid) {
         pixel_color_t error = {.brightness = 10, .r = 0xff};
         for (int flash = 0; flash < 2; ++flash) {
-            update_led_strip(error, led_strip);
+            led_output_fill(error);
             vTaskDelay(pdMS_TO_TICKS(180));
-            update_led_strip(pixel_color_black, led_strip);
+            led_output_fill(pixel_color_black);
             vTaskDelay(pdMS_TO_TICKS(180));
         }
     }
@@ -403,25 +334,25 @@ static void show_usb_power_capability(usb_source_measurement_t measurement,
     TickType_t sweep_delay = pdMS_TO_TICKS(500 / illuminated_pixels);
     for (int pixel = 0; pixel < illuminated_pixels; ++pixel) {
         pixels[pixel] = gauge_color;
-        update_led_strip_pixels(pixels, led_strip);
+        led_output_show_pixels(pixels);
         vTaskDelay(sweep_delay);
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     uint8_t starting_brightness = gauge_color.brightness;
-    if (starting_brightness > maximum_led_brightness) {
-        starting_brightness = maximum_led_brightness;
+    if (starting_brightness > led_output_maximum_brightness()) {
+        starting_brightness = led_output_maximum_brightness();
     }
     for (int brightness = starting_brightness; brightness >= 0; --brightness) {
         for (int pixel = 0; pixel < illuminated_pixels; ++pixel) {
             pixels[pixel].brightness = brightness;
         }
-        update_led_strip_pixels(pixels, led_strip);
+        led_output_show_pixels(pixels);
         vTaskDelay(pdMS_TO_TICKS(70));
     }
 }
 
-static void show_firmware_version(led_strip_handle_t led_strip)
+static void show_firmware_version(void)
 {
     const char *version = esp_app_get_description()->version;
     unsigned int parts[3];
@@ -454,9 +385,9 @@ static void show_firmware_version(led_strip_handle_t led_strip)
         for (int pixel = 0; pixel < LED_COUNT; ++pixel) {
             pixels[pixel] = (unsigned int)pixel < parts[part] ? white : backgrounds[part];
         }
-        update_led_strip_pixels(pixels, led_strip);
+        led_output_show_pixels(pixels);
         vTaskDelay(pdMS_TO_TICKS(VERSION_DISPLAY_HOLD_MS));
-        update_led_strip(pixel_color_black, led_strip);
+        led_output_fill(pixel_color_black);
         vTaskDelay(pdMS_TO_TICKS(VERSION_DISPLAY_PAUSE_MS));
     }
 }

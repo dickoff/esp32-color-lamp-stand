@@ -12,3 +12,4 @@ managed_components/
 pcb/manufacturing/gerbers/
 pcb/manufacturing/jlcpcb/gerbers/
 pcb/manufacturing/reports/
+build/
