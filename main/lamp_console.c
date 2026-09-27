@@ -38,7 +38,8 @@ static int usage(void)
            "  lamp hs <0-359> <0-100> hue degrees, saturation percent\n"
            "  lamp ct <2000-6500>     color temperature in kelvin\n"
            "  lamp stock on | off\n"
-           "  lamp stock up | down | unknown   simulate a stock result\n");
+           "  lamp stock up | down | unknown   simulate a stock result\n"
+           "  lamp identify [seconds]  blink the ring (default 5, 0 stops)\n");
     return 1;
 }
 
@@ -74,6 +75,13 @@ static int lamp_command(int argc, char **argv)
             return usage();
         }
         lamp_set_color_temperature(lroundf(1000000.0f / kelvin));
+    } else if ((argc == 2 || argc == 3) && strcmp(action, "identify") == 0) {
+        int seconds = argc == 3 ? atoi(argv[2]) : 5;
+        if (seconds < 0 || seconds > 300) {
+            return usage();
+        }
+        lamp_identify(seconds * 1000);
+        return 0;
     } else if (argc == 3 && strcmp(action, "stock") == 0) {
         const char *value = argv[2];
         if (strcmp(value, "on") == 0) {

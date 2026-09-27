@@ -2,15 +2,24 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstring>
 #include <cmath>
 
 #include <esp_log.h>
 #include <esp_matter.h>
+#include <esp_matter_providers.h>
+#include <nvs_flash.h>
 
+#include <app/persistence/AttributePersistence.h>
+#include <app/persistence/DefaultAttributePersistenceProvider.h>
+#include <app/persistence/String.h>
 #include <app/server/CommissioningWindowManager.h>
 #include <setup_payload/OnboardingCodesUtil.h>
 #include <app/server/Server.h>
 #include <platform/CHIPDeviceLayer.h>
+#include <platform/ESP32/ESP32Config.h>
+#include <platform/KvsPersistentStorageDelegate.h>
+#include <platform/internal/GenericDeviceInstanceInfoProvider.h>
 
 #include "lamp.h"
 
@@ -28,6 +37,50 @@ static constexpr uint16_t kCommissioningWindowSeconds = 15 * 60;
 // the Home app tile shows what the stand is displaying.
 static constexpr uint8_t kStockUpHue = 85;  // 120 degrees
 static constexpr uint8_t kStockDownHue = 0;
+
+// Shown by controllers as the accessory's manufacturer and model.
+static constexpr char kVendorName[] = "Color Lamp Stand Project";
+static constexpr char kProductName[] = "Color Lamp Stand";
+// Basic Information NodeLabel until a controller sets its own.
+static constexpr char kDefaultNodeLabel[] = "Color Lamp Stand";
+
+// Controllers identify the lamp for this long when they don't stop it sooner.
+static constexpr uint32_t kIdentifyMaxMs = 5 * 60 * 1000;
+static constexpr uint32_t kIdentifyEffectMs = 2000;
+
+// Replaces the SDK's "TEST_VENDOR"/"TEST_PRODUCT" names; every other value
+// (serial number, hardware version, and so on) comes from the generic provider.
+class LampDeviceInstanceInfoProvider
+    : public chip::DeviceLayer::Internal::GenericDeviceInstanceInfoProvider<
+          chip::DeviceLayer::Internal::ESP32Config> {
+public:
+    LampDeviceInstanceInfoProvider()
+        : GenericDeviceInstanceInfoProvider(
+              chip::DeviceLayer::ConfigurationManagerImpl::GetDefaultInstance())
+    {
+    }
+
+    CHIP_ERROR GetVendorName(char *buf, size_t bufSize) override
+    {
+        return CopyName(kVendorName, buf, bufSize);
+    }
+
+    CHIP_ERROR GetProductName(char *buf, size_t bufSize) override
+    {
+        return CopyName(kProductName, buf, bufSize);
+    }
+
+private:
+    static CHIP_ERROR CopyName(const char *name, char *buf, size_t bufSize)
+    {
+        if (strlcpy(buf, name, bufSize) >= bufSize) {
+            return CHIP_ERROR_BUFFER_TOO_SMALL;
+        }
+        return CHIP_NO_ERROR;
+    }
+};
+
+static LampDeviceInstanceInfoProvider s_device_instance_info_provider;
 
 static uint16_t s_light_endpoint_id;
 static uint16_t s_stock_endpoint_id;
@@ -172,6 +225,22 @@ static esp_err_t identification_cb(identification::callback_type_t type, uint16_
                                    uint8_t effect_id, uint8_t effect_variant, void *priv_data)
 {
     ESP_LOGI(LOG_TAG, "Identify on endpoint %u, type %u, effect %u", endpoint_id, type, effect_id);
+    switch (type) {
+        case identification::START:
+            lamp_identify(kIdentifyMaxMs);
+            break;
+        case identification::STOP:
+            lamp_identify(0);
+            break;
+        case identification::EFFECT:
+            if (effect_id == (uint8_t)Identify::EffectIdentifierEnum::kStopEffect
+                || effect_id == (uint8_t)Identify::EffectIdentifierEnum::kFinishEffect) {
+                lamp_identify(0);
+            } else {
+                lamp_identify(kIdentifyEffectMs);
+            }
+            break;
+    }
     return ESP_OK;
 }
 
@@ -314,6 +383,38 @@ static endpoint_t *create_light_endpoint(node_t *node, const lamp_state_t *state
     return endpoint;
 }
 
+// The Basic Information cluster loads NodeLabel from attribute storage once
+// at startup, so seed the default there before Matter starts. A label a
+// controller has written, even an empty one, is left alone.
+static void seed_default_node_label(void)
+{
+    if (nvs_flash_init_partition(CONFIG_CHIP_KVS_NAMESPACE_PARTITION_LABEL) != ESP_OK) {
+        return;
+    }
+    chip::KvsPersistentStorageDelegate storage;
+    chip::app::DefaultAttributePersistenceProvider provider;
+    if (storage.Init(&chip::DeviceLayer::PersistedStorage::KeyValueStoreMgr()) != CHIP_NO_ERROR
+        || provider.Init(&storage) != CHIP_NO_ERROR) {
+        return;
+    }
+
+    chip::app::AttributePersistence persistence(provider);
+    chip::app::ConcreteAttributePath path(chip::kRootEndpointId, BasicInformation::Id,
+                                          BasicInformation::Attributes::NodeLabel::Id);
+    chip::app::Storage::String<32> label;
+    if (persistence.LoadString(path, label)) {
+        ESP_LOGI(LOG_TAG, "Node label: \"%s\"", label.c_str());
+        return;
+    }
+    label.SetContent(chip::CharSpan::fromCharString(kDefaultNodeLabel));
+    CHIP_ERROR err = persistence.StoreString(path, label);
+    if (err == CHIP_NO_ERROR) {
+        ESP_LOGI(LOG_TAG, "Set default node label \"%s\"", kDefaultNodeLabel);
+    } else {
+        ESP_LOGW(LOG_TAG, "Unable to set default node label: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+}
+
 esp_err_t matter_lamp_start(void)
 {
     lamp_state_t state = lamp_get_state();
@@ -343,6 +444,8 @@ esp_err_t matter_lamp_start(void)
     }
     s_stock_endpoint_id = endpoint::get_id(stock);
 
+    seed_default_node_label();
+    esp_matter::set_custom_device_instance_info_provider(&s_device_instance_info_provider);
     esp_err_t err = esp_matter::start(matter_event_cb);
     if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG, "Unable to start Matter: %s", esp_err_to_name(err));

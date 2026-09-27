@@ -19,6 +19,8 @@
 #define LAMP_RENDER_TASK_PRIORITY 6
 #define LAMP_FRAME_INTERVAL_MS 16
 #define LAMP_IDLE_WAKE_MS 500
+#define LAMP_IDENTIFY_BLINK_US 250000
+#define LAMP_IDENTIFY_BRIGHTNESS 0.5f
 #define LAMP_FADE_US 500000
 #define LAMP_STARTUP_FADE_US 1000000
 // Matches the original stock indicator's update animation.
@@ -63,6 +65,7 @@ static lamp_state_t s_state;
 static transition_style_t s_next_transition = TRANSITION_FADE;
 static bool s_save_pending;
 static int64_t s_last_change_us;
+static int64_t s_identify_until_us;
 static TaskHandle_t s_render_task;
 static change_listener_t s_listeners[LAMP_MAX_CHANGE_CALLBACKS];
 static int s_listener_count;
@@ -282,14 +285,17 @@ static void render_task(void *unused)
     int64_t transition_duration_us = LAMP_STARTUP_FADE_US;
     bool animating = false;
     bool first_frame = true;
+    bool was_identifying = false;
 
     while (true) {
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(animating ? LAMP_FRAME_INTERVAL_MS
-                                                         : LAMP_IDLE_WAKE_MS));
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(animating || was_identifying
+                                                   ? LAMP_FRAME_INTERVAL_MS
+                                                   : LAMP_IDLE_WAKE_MS));
         int64_t now_us = esp_timer_get_time();
 
         portENTER_CRITICAL(&s_lock);
         lamp_state_t state = s_state;
+        bool identifying = now_us < s_identify_until_us;
         transition_style_t next_style = s_next_transition;
         s_next_transition = TRANSITION_FADE;
         bool save_due = s_save_pending && now_us - s_last_change_us >= LAMP_SAVE_DELAY_US;
@@ -311,6 +317,7 @@ static void render_task(void *unused)
             first_frame = false;
         }
 
+        bool displayed_changed = false;
         if (animating) {
             float x = (float)(now_us - transition_started_us) / transition_duration_us;
             if (x >= 1.0f) {
@@ -318,9 +325,19 @@ static void render_task(void *unused)
                 animating = false;
             }
             displayed = interpolate_frames(from, to, style, x);
+            displayed_changed = true;
+        }
+
+        // Identify blinks white even when the lamp is off; transitions keep
+        // running underneath so the lamp resumes in its current state.
+        if (identifying) {
+            bool lit = (now_us / LAMP_IDENTIFY_BLINK_US) % 2 == 0;
+            led_output_fill_scaled(1.0f, 1.0f, 1.0f, lit ? LAMP_IDENTIFY_BRIGHTNESS : 0.0f);
+        } else if (displayed_changed || was_identifying) {
             led_output_fill_scaled(displayed.red, displayed.green, displayed.blue,
                                    displayed.brightness);
         }
+        was_identifying = identifying;
 
         if (save_due) {
             save_state(&state);
@@ -491,6 +508,17 @@ void lamp_set_stock_indication(lamp_stock_indication_t indication)
     portEXIT_CRITICAL(&s_lock);
     if (changed) {
         notify_changed(&state);
+    }
+}
+
+void lamp_identify(uint32_t duration_ms)
+{
+    portENTER_CRITICAL(&s_lock);
+    s_identify_until_us = duration_ms == 0 ? 0
+                                           : esp_timer_get_time() + (int64_t)duration_ms * 1000;
+    portEXIT_CRITICAL(&s_lock);
+    if (s_render_task != NULL) {
+        xTaskNotifyGive(s_render_task);
     }
 }
 

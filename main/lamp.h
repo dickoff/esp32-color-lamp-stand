@@ -62,6 +62,10 @@ void lamp_set_color_temperature(uint16_t mireds);
 void lamp_set_stock_mode(bool enabled);
 void lamp_set_stock_indication(lamp_stock_indication_t indication);
 
+// Blinks the whole ring so a person can find this lamp, overriding the normal
+// display for duration_ms; 0 stops it early. Not saved and not reported.
+void lamp_identify(uint32_t duration_ms);
+
 const char *lamp_stock_indication_name(lamp_stock_indication_t indication);
 
 #ifdef __cplusplus
