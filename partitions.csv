@@ -1,0 +1,10 @@
+# Name,     Type, SubType, Offset,   Size
+# nvs and phy_init keep the offsets of ESP-IDF's single-app-large table so a
+# USB reflash from earlier firmware preserves saved Wi-Fi and lamp settings.
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+factory,    app,  factory, 0x10000,  0x600000
+# Matter fabrics, keys, and attributes, kept apart from the application's NVS.
+matter_nvs, data, nvs,     0x610000, 0x10000
+# Per-device Matter onboarding data written at manufacture (esp-matter-mfg-tool).
+fctry,      data, nvs,     0x620000, 0x6000
